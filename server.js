@@ -10,34 +10,55 @@ const printer = new ThermalPrinter({
   interface: ipAddress
 });
 
+// Cola de impresión
+const printQueue = [];
+let isPrinting = false;
+
+// Función para añadir un ticket a la cola
+const queuePrintTicket = (message) => {
+  printQueue.push(message);
+  processPrintQueue(); // Intentar procesar la cola
+};
+
+// Función para añadir un delay (en milisegundos)
+const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Procesar la cola de impresión
+const processPrintQueue = async () => {
+  if (isPrinting || printQueue.length === 0) {
+    return;
+  }
+
+  isPrinting = true;
+  const message = printQueue.shift(); // Sacar el siguiente mensaje de la cola
+  
+  await printTicket(message);
+  await delay(1000); // Añadir un delay de 1 segundo (1000ms) entre impresiones
+
+  isPrinting = false;
+  processPrintQueue(); // Procesar el siguiente ticket en la cola
+};
 
 // Función para imprimir un ticket
-const printTicket = (message) => {
+const printTicket = async (message) => {
   console.log('Imprimiendo ticket...');
-  
-  printer.clear(); // Asegúrate de limpiar el buffer antes de empezar
+
+  printer.clear(); // Limpiar el buffer antes de empezar
 
   printer.alignCenter();
-
-  // Aumentar el tamaño de la letra
   printer.setTextSize(3, 3); // Aumenta el tamaño de la letra al doble en ancho y alto
-
-  // Imprimir el atributo idToDisplay
   printer.println(message.idToDisplay);
   
   printer.newLine();
   printer.cut();
 
   // Ejecutar la impresión
-  printer.execute().then(() => {
+  return printer.execute().then(() => {
     console.log('Ticket impreso correctamente.');
   }).catch((error) => {
     console.error('Error al imprimir el ticket:', error);
   });
 };
-
-  
-  
 
 // Conexión con el servidor WebSocket
 const socketUrl = process.env.SOCKET_URL || 'http://172.17.200.235:8002/shifts-websocket'; // Usa la variable de entorno o un valor por defecto
@@ -59,8 +80,8 @@ stompClient.onConnect = () => {
 
     // Validar si el mensaje contiene el atributo arrivedTime
     if (content.arrivedTime) {
-      // Imprimir ticket al recibir el mensaje
-      printTicket(content);
+      // Añadir el ticket a la cola de impresión
+      queuePrintTicket(content);
     } else {
       console.log('El mensaje recibido no tiene el atributo arrivedTime. No se imprimirá el ticket.');
     }
