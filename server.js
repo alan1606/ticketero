@@ -4,35 +4,43 @@ const ThermalPrinter = require('node-thermal-printer').printer;
 const PrinterTypes = require('node-thermal-printer').types;
 
 // Configuración de la impresora
+const ipAddress = process.env.PRINTER_IP || 'tcp://172.17.207.195:9100'; // Usa una variable de entorno, o un valor por defecto
 const printer = new ThermalPrinter({
-  type: PrinterTypes.EPSON, // O el tipo de impresora que utilices, por ejemplo: STAR, BIXOLON
-  interface: 'printer' // Puedes cambiar esto si la impresora está conectada a una interfaz diferente
+  type: PrinterTypes.EPSON,
+  interface: ipAddress
 });
+
 
 // Función para imprimir un ticket
 const printTicket = (message) => {
-    console.log('Imprimiendo ticket...');
+  console.log('Imprimiendo ticket...');
   
-    printer.alignCenter();
+  printer.clear(); // Asegúrate de limpiar el buffer antes de empezar
+
+  printer.alignCenter();
+
+  // Aumentar el tamaño de la letra
+  printer.setTextSize(3, 3); // Aumenta el tamaño de la letra al doble en ancho y alto
+
+  // Imprimir el atributo idToDisplay
+  printer.println(message.idToDisplay);
   
-    // Solo imprimir el atributo idToDisplay
-    printer.println(message.idToDisplay);
-    
-    printer.newLine();
-    printer.cut();
-  
-    // Ejecutar la impresión
-    printer.execute().then(() => {
-      console.log('Ticket impreso correctamente.');
-    }).catch((error) => {
-      console.error('Error al imprimir el ticket:', error);
-    });
-  };
+  printer.newLine();
+  printer.cut();
+
+  // Ejecutar la impresión
+  printer.execute().then(() => {
+    console.log('Ticket impreso correctamente.');
+  }).catch((error) => {
+    console.error('Error al imprimir el ticket:', error);
+  });
+};
+
   
   
 
 // Conexión con el servidor WebSocket
-const socketUrl = 'http://172.17.200.235:8002/shifts-websocket';
+const socketUrl = process.env.SOCKET_URL || 'http://172.17.200.235:8002/shifts-websocket'; // Usa la variable de entorno o un valor por defecto
 const socket = new SockJS(socketUrl);
 
 const stompClient = new Client({
